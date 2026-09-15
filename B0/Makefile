@@ -1,9 +1,14 @@
-CC = cc
+CC ?= cc
 AR = ar
 RANLIB = ranlib
 
 CPPFLAGS =
+HPUX_BUNDLED_CC := $(shell $(CC) --version 2>&1 | sed -n '1p' | grep -c '^(Bundled) cc:')
+ifeq ($(HPUX_BUNDLED_CC),1)
+CFLAGS =
+else
 CFLAGS = -O2
+endif
 LDFLAGS =
 LDLIBS =
 KAT_LDLIBS =
