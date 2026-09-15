@@ -14,6 +14,7 @@ LIBDIR := $(BUILD)/lib
 BINDIR := $(BUILD)/bin
 RESULTDIR := $(BUILD)/results
 KATDIR := $(BUILD)/kat
+KATSRC := tests/nistkat
 
 CORE_SRC := kem.c indcpa.c polyvec.c poly.c ntt.c cbd.c reduce.c verify.c fips202.c symmetric-shake.c
 OBJ512 := $(CORE_SRC:%.c=$(OBJDIR)/512/%.o)
@@ -23,10 +24,6 @@ OBJ1024 := $(CORE_SRC:%.c=$(OBJDIR)/1024/%.o)
 LIB512 := $(LIBDIR)/libb0_kyber512.a
 LIB768 := $(LIBDIR)/libb0_kyber768.a
 LIB1024 := $(LIBDIR)/libb0_kyber1024.a
-
-PAIRWISE_BINS := $(BINDIR)/pairwise512 $(BINDIR)/pairwise768 $(BINDIR)/pairwise1024
-TIME_BINS := $(BINDIR)/time512 $(BINDIR)/time768 $(BINDIR)/time1024
-KAT_BINS := $(BINDIR)/kat512 $(BINDIR)/kat768 $(BINDIR)/kat1024
 
 PAIRWISE_RESULTS := $(RESULTDIR)/pairwise512.txt $(RESULTDIR)/pairwise768.txt $(RESULTDIR)/pairwise1024.txt
 TIME_RESULTS := $(RESULTDIR)/time512.txt $(RESULTDIR)/time768.txt $(RESULTDIR)/time1024.txt
@@ -93,17 +90,17 @@ $(BINDIR)/time1024: tests/time_test.c randombytes.c $(LIB1024)
 	@mkdir -p $(BINDIR)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -I. -DKYBER_K=4 tests/time_test.c randombytes.c $(LIB1024) $(LDFLAGS) $(LDLIBS) -o $@
 
-$(BINDIR)/kat512: nistkat/PQCgenKAT_kem.c nistkat/rng.c $(LIB512)
+$(BINDIR)/kat512: $(KATSRC)/PQCgenKAT_kem.c $(KATSRC)/rng.c $(KATSRC)/rng.h $(LIB512)
 	@mkdir -p $(BINDIR)
-	$(CC) $(CPPFLAGS) $(CFLAGS) -I. -DKYBER_K=2 nistkat/PQCgenKAT_kem.c nistkat/rng.c $(LIB512) $(LDFLAGS) $(KAT_LDLIBS) -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) -I. -I$(KATSRC) -DKYBER_K=2 $(KATSRC)/PQCgenKAT_kem.c $(KATSRC)/rng.c $(LIB512) $(LDFLAGS) $(KAT_LDLIBS) -o $@
 
-$(BINDIR)/kat768: nistkat/PQCgenKAT_kem.c nistkat/rng.c $(LIB768)
+$(BINDIR)/kat768: $(KATSRC)/PQCgenKAT_kem.c $(KATSRC)/rng.c $(KATSRC)/rng.h $(LIB768)
 	@mkdir -p $(BINDIR)
-	$(CC) $(CPPFLAGS) $(CFLAGS) -I. -DKYBER_K=3 nistkat/PQCgenKAT_kem.c nistkat/rng.c $(LIB768) $(LDFLAGS) $(KAT_LDLIBS) -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) -I. -I$(KATSRC) -DKYBER_K=3 $(KATSRC)/PQCgenKAT_kem.c $(KATSRC)/rng.c $(LIB768) $(LDFLAGS) $(KAT_LDLIBS) -o $@
 
-$(BINDIR)/kat1024: nistkat/PQCgenKAT_kem.c nistkat/rng.c $(LIB1024)
+$(BINDIR)/kat1024: $(KATSRC)/PQCgenKAT_kem.c $(KATSRC)/rng.c $(KATSRC)/rng.h $(LIB1024)
 	@mkdir -p $(BINDIR)
-	$(CC) $(CPPFLAGS) $(CFLAGS) -I. -DKYBER_K=4 nistkat/PQCgenKAT_kem.c nistkat/rng.c $(LIB1024) $(LDFLAGS) $(KAT_LDLIBS) -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) -I. -I$(KATSRC) -DKYBER_K=4 $(KATSRC)/PQCgenKAT_kem.c $(KATSRC)/rng.c $(LIB1024) $(LDFLAGS) $(KAT_LDLIBS) -o $@
 
 $(RESULTDIR)/pairwise512.txt: $(BINDIR)/pairwise512
 	@mkdir -p $(RESULTDIR)
