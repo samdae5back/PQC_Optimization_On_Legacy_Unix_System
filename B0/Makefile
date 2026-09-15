@@ -17,6 +17,7 @@ BINDIR := $(BUILD)/bin
 RESULTDIR := $(BUILD)/results
 KATDIR := $(BUILD)/kat
 VECTORDIR := $(BUILD)/vectors
+SUMMARY := $(BUILD)/summary.txt
 KATSRC := tests/nistkat
 VECTORSRC := tests/vectors
 
@@ -34,15 +35,16 @@ TIME_RESULTS := $(RESULTDIR)/time512.txt $(RESULTDIR)/time768.txt $(RESULTDIR)/t
 KAT_RESULTS := $(KATDIR)/512/.done $(KATDIR)/768/.done $(KATDIR)/1024/.done
 VECTOR_CHECKS := $(VECTORDIR)/tvecs512.sha256.ok $(VECTORDIR)/tvecs768.sha256.ok $(VECTORDIR)/tvecs1024.sha256.ok
 
-.PHONY: all libs pairwise time kat vectors check clean
+.PHONY: all libs pairwise time kat vectors summary check clean
 
-all: libs pairwise time kat
+all: summary
 
 libs: $(LIB512) $(LIB768) $(LIB1024)
 pairwise: $(PAIRWISE_RESULTS)
 time: $(TIME_RESULTS)
 kat: $(KAT_RESULTS) vectors
 vectors: $(VECTOR_CHECKS)
+summary: $(SUMMARY)
 check: pairwise kat
 
 $(OBJDIR)/512/%.o: %.c
@@ -188,6 +190,62 @@ $(VECTORDIR)/tvecs1024.sha256.ok: $(VECTORDIR)/tvecs1024 $(VECTORSRC)/SHA256SUMS
 	expected=`$(AWK) '$$2 == "tvecs1024" {print $$1}' $(VECTORSRC)/SHA256SUMS`; \
 	if test "$$actual" != "$$expected"; then echo "FAIL tvecs1024 SHA-256: $$actual != $$expected" >&2; exit 1; fi; \
 	echo "PASS tvecs1024 SHA-256 $$actual"; echo "$$actual" > $@
+
+$(SUMMARY): $(LIB512) $(LIB768) $(LIB1024) $(PAIRWISE_RESULTS) $(TIME_RESULTS) $(KAT_RESULTS) $(VECTOR_CHECKS)
+	@mkdir -p $(BUILD)
+	@{ \
+		echo "B0 Build and Validation Summary"; \
+		echo "==============================="; \
+		echo; \
+		echo "[System]"; \
+		echo "generated_at=`date 2>/dev/null || echo unknown`"; \
+		echo "hostname=`hostname 2>/dev/null || uname -n 2>/dev/null || echo unknown`"; \
+		echo "uname=`uname -a 2>/dev/null || echo unknown`"; \
+		echo "os=`uname -s 2>/dev/null || echo unknown`"; \
+		echo "kernel_release=`uname -r 2>/dev/null || echo unknown`"; \
+		echo "machine=`uname -m 2>/dev/null || echo unknown`"; \
+		echo "processor=`uname -p 2>/dev/null || echo unknown`"; \
+		echo "word_bits=`getconf LONG_BIT 2>/dev/null || echo unknown`"; \
+		echo; \
+		echo "[Toolchain]"; \
+		echo "CC=$(CC)"; \
+		echo "compiler_path=`command -v $(CC) 2>/dev/null || echo unknown`"; \
+		compiler_version=`$(CC) --version 2>/dev/null | sed -n '1p'`; \
+		if test -z "$$compiler_version"; then compiler_version=`$(CC) -V 2>&1 | sed -n '1p'`; fi; \
+		if test -z "$$compiler_version"; then compiler_version=`$(CC) -qversion 2>&1 | sed -n '1p'`; fi; \
+		echo "compiler_version=$$compiler_version"; \
+		echo "CPPFLAGS=$(CPPFLAGS)"; \
+		echo "CFLAGS=$(CFLAGS)"; \
+		echo "LDFLAGS=$(LDFLAGS)"; \
+		echo "LDLIBS=$(LDLIBS)"; \
+		echo "KAT_LDLIBS=$(KAT_LDLIBS)"; \
+		echo "AR=$(AR)"; \
+		echo "RANLIB=$(RANLIB)"; \
+		echo "OPENSSL=$(OPENSSL)"; \
+		echo "openssl_version=`$(OPENSSL) version 2>/dev/null || echo unknown`"; \
+		echo; \
+		echo "[Libraries]"; \
+		for f in $(LIB512) $(LIB768) $(LIB1024); do \
+			if test -f $$f; then echo "PASS $$f size=`wc -c < $$f | tr -d ' '` bytes"; else echo "FAIL $$f missing"; fi; \
+		done; \
+		echo; \
+		echo "[Pairwise]"; \
+		cat $(PAIRWISE_RESULTS); \
+		echo; \
+		echo "[Timing]"; \
+		for f in $(TIME_RESULTS); do echo "--- $$f ---"; cat $$f; done; \
+		echo; \
+		echo "[NIST KAT]"; \
+		for p in 512 768 1024; do \
+			if test -f $(KATDIR)/$$p/.done; then echo "PASS kyber$$p KAT generated"; else echo "FAIL kyber$$p KAT missing"; fi; \
+		done; \
+		echo; \
+		echo "[Upstream deterministic vectors]"; \
+		for p in 512 768 1024; do \
+			if test -f $(VECTORDIR)/tvecs$$p.sha256.ok; then echo "PASS tvecs$$p SHA-256 `cat $(VECTORDIR)/tvecs$$p.sha256.ok`"; else echo "FAIL tvecs$$p SHA-256"; fi; \
+		done; \
+	} > $(SUMMARY)
+	@echo "Summary written to $(SUMMARY)"
 
 clean:
 	rm -rf $(BUILD)
