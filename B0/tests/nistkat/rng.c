@@ -17,7 +17,7 @@ int seedexpander_init(AES_XOF_struct *ctx,
                       unsigned char *diversifier,
                       unsigned long maxlen)
 {
-    if(maxlen >= 0x100000000ULL)
+    if((unsigned long long)maxlen >= 0x100000000ULL)
         return RNG_BAD_MAXLEN;
 
     ctx->length_remaining = maxlen;
