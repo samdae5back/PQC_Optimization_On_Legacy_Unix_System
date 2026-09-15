@@ -76,8 +76,14 @@ int main(void)
     done = 0;
 
     do {
-        if(FindMarker(fp_req, "count = "))
-            fscanf(fp_req, "%d", &count);
+        if(FindMarker(fp_req, "count = ")) {
+            if(fscanf(fp_req, "%d", &count) != 1) {
+                printf("ERROR: unable to read count from <%s>\n", fn_req);
+                fclose(fp_req);
+                fclose(fp_rsp);
+                return KAT_DATA_ERROR;
+            }
+        }
         else {
             done = 1;
             break;
