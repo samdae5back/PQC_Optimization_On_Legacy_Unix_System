@@ -1,14 +1,12 @@
 CC ?= cc
 AR ?= ar
 RANLIB ?= ranlib
-OPENSSL ?= openssl
-AWK ?= awk
 
 CPPFLAGS ?=
 CFLAGS ?= -O2
 LDFLAGS ?=
 LDLIBS ?=
-KAT_LDLIBS ?= -lcrypto
+KAT_LDLIBS ?=
 
 BUILD := build
 OBJDIR := $(BUILD)/obj
@@ -20,6 +18,7 @@ VECTORDIR := $(BUILD)/vectors
 SUMMARY := $(BUILD)/summary.txt
 KATSRC := tests/nistkat
 VECTORSRC := tests/vectors
+SHA256CHECK := $(BINDIR)/sha256_file
 
 CORE_SRC := kem.c indcpa.c polyvec.c poly.c ntt.c cbd.c reduce.c verify.c fips202.c symmetric-shake.c
 OBJ512 := $(CORE_SRC:%.c=$(OBJDIR)/512/%.o)
@@ -98,17 +97,17 @@ $(BINDIR)/time1024: tests/time_test.c randombytes.c $(LIB1024)
 	@mkdir -p $(BINDIR)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -I. -DKYBER_K=4 tests/time_test.c randombytes.c $(LIB1024) $(LDFLAGS) $(LDLIBS) -o $@
 
-$(BINDIR)/kat512: $(KATSRC)/PQCgenKAT_kem.c $(KATSRC)/rng.c $(KATSRC)/rng.h $(LIB512)
+$(BINDIR)/kat512: $(KATSRC)/PQCgenKAT_kem.c $(KATSRC)/rng.c $(KATSRC)/rng.h $(KATSRC)/aes256.c $(KATSRC)/aes256.h $(LIB512)
 	@mkdir -p $(BINDIR)
-	$(CC) $(CPPFLAGS) $(CFLAGS) -I. -I$(KATSRC) -DKYBER_K=2 $(KATSRC)/PQCgenKAT_kem.c $(KATSRC)/rng.c $(LIB512) $(LDFLAGS) $(KAT_LDLIBS) -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) -I. -I$(KATSRC) -DKYBER_K=2 $(KATSRC)/PQCgenKAT_kem.c $(KATSRC)/rng.c $(KATSRC)/aes256.c $(LIB512) $(LDFLAGS) $(KAT_LDLIBS) -o $@
 
-$(BINDIR)/kat768: $(KATSRC)/PQCgenKAT_kem.c $(KATSRC)/rng.c $(KATSRC)/rng.h $(LIB768)
+$(BINDIR)/kat768: $(KATSRC)/PQCgenKAT_kem.c $(KATSRC)/rng.c $(KATSRC)/rng.h $(KATSRC)/aes256.c $(KATSRC)/aes256.h $(LIB768)
 	@mkdir -p $(BINDIR)
-	$(CC) $(CPPFLAGS) $(CFLAGS) -I. -I$(KATSRC) -DKYBER_K=3 $(KATSRC)/PQCgenKAT_kem.c $(KATSRC)/rng.c $(LIB768) $(LDFLAGS) $(KAT_LDLIBS) -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) -I. -I$(KATSRC) -DKYBER_K=3 $(KATSRC)/PQCgenKAT_kem.c $(KATSRC)/rng.c $(KATSRC)/aes256.c $(LIB768) $(LDFLAGS) $(KAT_LDLIBS) -o $@
 
-$(BINDIR)/kat1024: $(KATSRC)/PQCgenKAT_kem.c $(KATSRC)/rng.c $(KATSRC)/rng.h $(LIB1024)
+$(BINDIR)/kat1024: $(KATSRC)/PQCgenKAT_kem.c $(KATSRC)/rng.c $(KATSRC)/rng.h $(KATSRC)/aes256.c $(KATSRC)/aes256.h $(LIB1024)
 	@mkdir -p $(BINDIR)
-	$(CC) $(CPPFLAGS) $(CFLAGS) -I. -I$(KATSRC) -DKYBER_K=4 $(KATSRC)/PQCgenKAT_kem.c $(KATSRC)/rng.c $(LIB1024) $(LDFLAGS) $(KAT_LDLIBS) -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) -I. -I$(KATSRC) -DKYBER_K=4 $(KATSRC)/PQCgenKAT_kem.c $(KATSRC)/rng.c $(KATSRC)/aes256.c $(LIB1024) $(LDFLAGS) $(KAT_LDLIBS) -o $@
 
 $(BINDIR)/vectors512: $(VECTORSRC)/test_vectors.c $(LIB512)
 	@mkdir -p $(BINDIR)
@@ -121,6 +120,10 @@ $(BINDIR)/vectors768: $(VECTORSRC)/test_vectors.c $(LIB768)
 $(BINDIR)/vectors1024: $(VECTORSRC)/test_vectors.c $(LIB1024)
 	@mkdir -p $(BINDIR)
 	$(CC) $(CPPFLAGS) $(CFLAGS) -I. -DKYBER_K=4 $(VECTORSRC)/test_vectors.c $(LIB1024) $(LDFLAGS) $(LDLIBS) -o $@
+
+$(SHA256CHECK): $(VECTORSRC)/sha256_file.c
+	@mkdir -p $(BINDIR)
+	$(CC) $(CPPFLAGS) $(CFLAGS) $(VECTORSRC)/sha256_file.c $(LDFLAGS) -o $@
 
 $(RESULTDIR)/pairwise512.txt: $(BINDIR)/pairwise512
 	@mkdir -p $(RESULTDIR)
@@ -173,21 +176,18 @@ $(VECTORDIR)/tvecs1024: $(BINDIR)/vectors1024
 	@mkdir -p $(VECTORDIR)
 	./$(BINDIR)/vectors1024 > $@
 
-$(VECTORDIR)/tvecs512.sha256.ok: $(VECTORDIR)/tvecs512 $(VECTORSRC)/SHA256SUMS
-	@actual=`$(OPENSSL) dgst -sha256 $(VECTORDIR)/tvecs512 | $(AWK) '{print $$NF}'`; \
-	expected=`$(AWK) '$$2 == "tvecs512" {print $$1}' $(VECTORSRC)/SHA256SUMS`; \
+$(VECTORDIR)/tvecs512.sha256.ok: $(VECTORDIR)/tvecs512 $(VECTORSRC)/SHA256SUMS $(SHA256CHECK)
+	@actual=`$(SHA256CHECK) $(VECTORDIR)/tvecs512`; expected=`while read hash name; do if test "$$name" = "tvecs512"; then echo "$$hash"; break; fi; done < $(VECTORSRC)/SHA256SUMS`; \
 	if test "$$actual" != "$$expected"; then echo "FAIL tvecs512 SHA-256: $$actual != $$expected" >&2; exit 1; fi; \
 	echo "PASS tvecs512 SHA-256 $$actual"; echo "$$actual" > $@
 
-$(VECTORDIR)/tvecs768.sha256.ok: $(VECTORDIR)/tvecs768 $(VECTORSRC)/SHA256SUMS
-	@actual=`$(OPENSSL) dgst -sha256 $(VECTORDIR)/tvecs768 | $(AWK) '{print $$NF}'`; \
-	expected=`$(AWK) '$$2 == "tvecs768" {print $$1}' $(VECTORSRC)/SHA256SUMS`; \
+$(VECTORDIR)/tvecs768.sha256.ok: $(VECTORDIR)/tvecs768 $(VECTORSRC)/SHA256SUMS $(SHA256CHECK)
+	@actual=`$(SHA256CHECK) $(VECTORDIR)/tvecs768`; expected=`while read hash name; do if test "$$name" = "tvecs768"; then echo "$$hash"; break; fi; done < $(VECTORSRC)/SHA256SUMS`; \
 	if test "$$actual" != "$$expected"; then echo "FAIL tvecs768 SHA-256: $$actual != $$expected" >&2; exit 1; fi; \
 	echo "PASS tvecs768 SHA-256 $$actual"; echo "$$actual" > $@
 
-$(VECTORDIR)/tvecs1024.sha256.ok: $(VECTORDIR)/tvecs1024 $(VECTORSRC)/SHA256SUMS
-	@actual=`$(OPENSSL) dgst -sha256 $(VECTORDIR)/tvecs1024 | $(AWK) '{print $$NF}'`; \
-	expected=`$(AWK) '$$2 == "tvecs1024" {print $$1}' $(VECTORSRC)/SHA256SUMS`; \
+$(VECTORDIR)/tvecs1024.sha256.ok: $(VECTORDIR)/tvecs1024 $(VECTORSRC)/SHA256SUMS $(SHA256CHECK)
+	@actual=`$(SHA256CHECK) $(VECTORDIR)/tvecs1024`; expected=`while read hash name; do if test "$$name" = "tvecs1024"; then echo "$$hash"; break; fi; done < $(VECTORSRC)/SHA256SUMS`; \
 	if test "$$actual" != "$$expected"; then echo "FAIL tvecs1024 SHA-256: $$actual != $$expected" >&2; exit 1; fi; \
 	echo "PASS tvecs1024 SHA-256 $$actual"; echo "$$actual" > $@
 
@@ -221,13 +221,11 @@ $(SUMMARY): $(LIB512) $(LIB768) $(LIB1024) $(PAIRWISE_RESULTS) $(TIME_RESULTS) $
 		echo "KAT_LDLIBS=$(KAT_LDLIBS)"; \
 		echo "AR=$(AR)"; \
 		echo "RANLIB=$(RANLIB)"; \
-		echo "OPENSSL=$(OPENSSL)"; \
-		echo "openssl_version=`$(OPENSSL) version 2>/dev/null || echo unknown`"; \
+		echo "kat_aes=internal portable AES-256"; \
+		echo "sha256_checker=internal portable C"; \
 		echo; \
 		echo "[Libraries]"; \
-		for f in $(LIB512) $(LIB768) $(LIB1024); do \
-			if test -f $$f; then echo "PASS $$f size=`wc -c < $$f | tr -d ' '` bytes"; else echo "FAIL $$f missing"; fi; \
-		done; \
+		for f in $(LIB512) $(LIB768) $(LIB1024); do if test -f $$f; then echo "PASS $$f size=`wc -c < $$f | tr -d ' '` bytes"; else echo "FAIL $$f missing"; fi; done; \
 		echo; \
 		echo "[Pairwise]"; \
 		cat $(PAIRWISE_RESULTS); \
@@ -236,16 +234,12 @@ $(SUMMARY): $(LIB512) $(LIB768) $(LIB1024) $(PAIRWISE_RESULTS) $(TIME_RESULTS) $
 		for f in $(TIME_RESULTS); do echo "--- $$f ---"; cat $$f; done; \
 		echo; \
 		echo "[NIST KAT]"; \
-		for p in 512 768 1024; do \
-			if test -f $(KATDIR)/$$p/.done; then echo "PASS kyber$$p KAT generated"; else echo "FAIL kyber$$p KAT missing"; fi; \
-		done; \
+		for p in 512 768 1024; do if test -f $(KATDIR)/$$p/.done; then echo "PASS kyber$$p KAT generated"; else echo "FAIL kyber$$p KAT missing"; fi; done; \
 		echo; \
 		echo "[Upstream deterministic vectors]"; \
-		for p in 512 768 1024; do \
-			if test -f $(VECTORDIR)/tvecs$$p.sha256.ok; then echo "PASS tvecs$$p SHA-256 `cat $(VECTORDIR)/tvecs$$p.sha256.ok`"; else echo "FAIL tvecs$$p SHA-256"; fi; \
-		done; \
+		for p in 512 768 1024; do if test -f $(VECTORDIR)/tvecs$$p.sha256.ok; then echo "PASS tvecs$$p SHA-256 `cat $(VECTORDIR)/tvecs$$p.sha256.ok`"; else echo "FAIL tvecs$$p SHA-256 missing"; fi; done; \
 	} > $(SUMMARY)
-	@echo "Summary written to $(SUMMARY)"
+	@echo "Wrote $(SUMMARY)"
 
 clean:
 	rm -rf $(BUILD)

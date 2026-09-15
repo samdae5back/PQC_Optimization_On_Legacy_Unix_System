@@ -1,36 +1,15 @@
 #include <stdlib.h>
 #include <string.h>
+#include "aes256.h"
 #include "rng.h"
-#include <openssl/conf.h>
-#include <openssl/evp.h>
-#include <openssl/err.h>
 
 AES256_CTR_DRBG_struct DRBG_ctx;
-
-static void handle_errors(void)
-{
-    ERR_print_errors_fp(stderr);
-    abort();
-}
 
 static void AES256_ECB(unsigned char *key,
                        unsigned char *ctr,
                        unsigned char *buffer)
 {
-    EVP_CIPHER_CTX *ctx;
-    int len;
-
-    ctx = EVP_CIPHER_CTX_new();
-    if(ctx == NULL)
-        handle_errors();
-
-    if(EVP_EncryptInit_ex(ctx, EVP_aes_256_ecb(), NULL, key, NULL) != 1)
-        handle_errors();
-
-    if(EVP_EncryptUpdate(ctx, buffer, &len, ctr, 16) != 1)
-        handle_errors();
-
-    EVP_CIPHER_CTX_free(ctx);
+    b0_aes256_encrypt_block(key, ctr, buffer);
 }
 
 int seedexpander_init(AES_XOF_struct *ctx,

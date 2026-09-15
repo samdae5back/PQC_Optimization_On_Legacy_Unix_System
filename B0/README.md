@@ -26,13 +26,15 @@ build/
 
 The parameter-specific libraries contain the KEM core and FIPS202 implementation but intentionally do not contain an entropy provider. Pairwise and timing tests link the normal OS-backed `randombytes.c`, while the KAT executables link the deterministic NIST KAT RNG implementation. This keeps all test classes on the same cryptographic library while allowing the randomness source to be selected by the test harness.
 
-`build/summary.txt` records experiment provenance and results in one place, including hostname, `uname` system information, OS/kernel/machine/processor, detected word size, compiler command/path/version, build and linker flags, archiver tools, OpenSSL version, generated libraries and sizes, pairwise results, timing measurements, NIST KAT completion, and deterministic vector SHA-256 verification.
+The NIST KAT path is self-contained: `tests/nistkat/aes256.c` provides the AES-256 block operation required by the AES-256-CTR-DRBG, so OpenSSL headers and `libcrypto` are not required. The deterministic vector check also uses the repository-local `tests/vectors/sha256_file.c` checker instead of an external SHA-256 command.
+
+`build/summary.txt` records experiment provenance and results in one place, including hostname, `uname` system information, OS/kernel/machine/processor, detected word size, compiler command/path/version, build and linker flags, archiver tools, the internal KAT AES/SHA-256 implementations in use, generated libraries and sizes, pairwise results, timing measurements, NIST KAT completion, and deterministic vector SHA-256 verification.
 
 ## Legacy C source policy
 
 B0 source intended to be built on legacy compilers follows a declaration-first style: local variables are declared at the beginning of each function or block before executable statements. C99-style loop declarations such as `for (int i = 0; ...)` are avoided, and loop variables are declared once and reused instead of being redeclared in nested or later loops.
 
-The B0-specific KAT sources under `tests/nistkat/` are adapted from the pinned upstream KAT harness only for compiler portability and use the same deterministic KAT procedure.
+The B0-specific KAT sources under `tests/nistkat/` are adapted from the pinned upstream KAT harness only for compiler portability and dependency removal and use the same deterministic KAT procedure.
 
 The deterministic vector check follows the pinned upstream Kyber `test/test_vectors.c` procedure and verifies its output against the SHA-256 values recorded by the same pinned upstream revision.
 
@@ -50,4 +52,4 @@ make check    # pairwise + KAT
 make clean
 ```
 
-KAT generation requires a compatible OpenSSL `libcrypto` by default. Override `KAT_LDLIBS` if the target system uses a different linker option or crypto provider.
+No OpenSSL development package is required for B0 KAT or vector verification.
