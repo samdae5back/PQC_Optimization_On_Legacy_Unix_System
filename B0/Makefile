@@ -1,62 +1,103 @@
-CC ?= cc
-AR ?= ar
-RANLIB ?= ranlib
+CC = cc
+AR = ar
+RANLIB = ranlib
 
-CPPFLAGS ?=
-CFLAGS ?= -O2
-LDFLAGS ?=
-LDLIBS ?=
-KAT_LDLIBS ?=
+CPPFLAGS =
+CFLAGS = -O2
+LDFLAGS =
+LDLIBS =
+KAT_LDLIBS =
 
-BUILD := build
-OBJDIR := $(BUILD)/obj
-LIBDIR := $(BUILD)/lib
-BINDIR := $(BUILD)/bin
-RESULTDIR := $(BUILD)/results
-KATDIR := $(BUILD)/kat
-VECTORDIR := $(BUILD)/vectors
-SUMMARY := $(BUILD)/summary.txt
-KATSRC := tests/nistkat
-VECTORSRC := tests/vectors
-SHA256CHECK := $(BINDIR)/sha256_file
+BUILD = build
+OBJDIR = $(BUILD)/obj
+LIBDIR = $(BUILD)/lib
+BINDIR = $(BUILD)/bin
+RESULTDIR = $(BUILD)/results
+KATDIR = $(BUILD)/kat
+VECTORDIR = $(BUILD)/vectors
+SUMMARY = $(BUILD)/summary.txt
+KATSRC = tests/nistkat
+VECTORSRC = tests/vectors
+SHA256CHECK = $(BINDIR)/sha256_file
 
-CORE_SRC := kem.c indcpa.c polyvec.c poly.c ntt.c cbd.c reduce.c verify.c fips202.c symmetric-shake.c
-OBJ512 := $(CORE_SRC:%.c=$(OBJDIR)/512/%.o)
-OBJ768 := $(CORE_SRC:%.c=$(OBJDIR)/768/%.o)
-OBJ1024 := $(CORE_SRC:%.c=$(OBJDIR)/1024/%.o)
+OBJ512 = $(OBJDIR)/512/kem.o $(OBJDIR)/512/indcpa.o $(OBJDIR)/512/polyvec.o $(OBJDIR)/512/poly.o $(OBJDIR)/512/ntt.o $(OBJDIR)/512/cbd.o $(OBJDIR)/512/reduce.o $(OBJDIR)/512/verify.o $(OBJDIR)/512/fips202.o $(OBJDIR)/512/symmetric-shake.o
+OBJ768 = $(OBJDIR)/768/kem.o $(OBJDIR)/768/indcpa.o $(OBJDIR)/768/polyvec.o $(OBJDIR)/768/poly.o $(OBJDIR)/768/ntt.o $(OBJDIR)/768/cbd.o $(OBJDIR)/768/reduce.o $(OBJDIR)/768/verify.o $(OBJDIR)/768/fips202.o $(OBJDIR)/768/symmetric-shake.o
+OBJ1024 = $(OBJDIR)/1024/kem.o $(OBJDIR)/1024/indcpa.o $(OBJDIR)/1024/polyvec.o $(OBJDIR)/1024/poly.o $(OBJDIR)/1024/ntt.o $(OBJDIR)/1024/cbd.o $(OBJDIR)/1024/reduce.o $(OBJDIR)/1024/verify.o $(OBJDIR)/1024/fips202.o $(OBJDIR)/1024/symmetric-shake.o
 
-LIB512 := $(LIBDIR)/libb0_kyber512.a
-LIB768 := $(LIBDIR)/libb0_kyber768.a
-LIB1024 := $(LIBDIR)/libb0_kyber1024.a
+LIB512 = $(LIBDIR)/libb0_kyber512.a
+LIB768 = $(LIBDIR)/libb0_kyber768.a
+LIB1024 = $(LIBDIR)/libb0_kyber1024.a
 
-PAIRWISE_RESULTS := $(RESULTDIR)/pairwise512.txt $(RESULTDIR)/pairwise768.txt $(RESULTDIR)/pairwise1024.txt
-TIME_RESULTS := $(RESULTDIR)/time512.txt $(RESULTDIR)/time768.txt $(RESULTDIR)/time1024.txt
-KAT_RESULTS := $(KATDIR)/512/.done $(KATDIR)/768/.done $(KATDIR)/1024/.done
-VECTOR_CHECKS := $(VECTORDIR)/tvecs512.sha256.ok $(VECTORDIR)/tvecs768.sha256.ok $(VECTORDIR)/tvecs1024.sha256.ok
-
-.PHONY: all libs pairwise time kat vectors summary check clean
+PAIRWISE_RESULTS = $(RESULTDIR)/pairwise512.txt $(RESULTDIR)/pairwise768.txt $(RESULTDIR)/pairwise1024.txt
+TIME_RESULTS = $(RESULTDIR)/time512.txt $(RESULTDIR)/time768.txt $(RESULTDIR)/time1024.txt
+KAT_RESULTS = $(KATDIR)/512/.done $(KATDIR)/768/.done $(KATDIR)/1024/.done
+VECTOR_CHECKS = $(VECTORDIR)/tvecs512.sha256.ok $(VECTORDIR)/tvecs768.sha256.ok $(VECTORDIR)/tvecs1024.sha256.ok
 
 all: summary
 
 libs: $(LIB512) $(LIB768) $(LIB1024)
+
 pairwise: $(PAIRWISE_RESULTS)
+
 time: $(TIME_RESULTS)
+
 kat: $(KAT_RESULTS) vectors
+
 vectors: $(VECTOR_CHECKS)
+
 summary: $(SUMMARY)
+
 check: pairwise kat
 
-$(OBJDIR)/512/%.o: %.c
-	@mkdir -p $(OBJDIR)/512
-	$(CC) $(CPPFLAGS) $(CFLAGS) -I. -DKYBER_K=2 -c $< -o $@
+$(OBJDIR)/512/kem.o $(OBJDIR)/768/kem.o $(OBJDIR)/1024/kem.o: kem.c
+	@case "$@" in */512/*) k=2;; */768/*) k=3;; *) k=4;; esac; \
+	mkdir -p `dirname "$@"`; \
+	$(CC) $(CPPFLAGS) $(CFLAGS) -I. -DKYBER_K=$$k -c kem.c -o "$@"
 
-$(OBJDIR)/768/%.o: %.c
-	@mkdir -p $(OBJDIR)/768
-	$(CC) $(CPPFLAGS) $(CFLAGS) -I. -DKYBER_K=3 -c $< -o $@
+$(OBJDIR)/512/indcpa.o $(OBJDIR)/768/indcpa.o $(OBJDIR)/1024/indcpa.o: indcpa.c
+	@case "$@" in */512/*) k=2;; */768/*) k=3;; *) k=4;; esac; \
+	mkdir -p `dirname "$@"`; \
+	$(CC) $(CPPFLAGS) $(CFLAGS) -I. -DKYBER_K=$$k -c indcpa.c -o "$@"
 
-$(OBJDIR)/1024/%.o: %.c
-	@mkdir -p $(OBJDIR)/1024
-	$(CC) $(CPPFLAGS) $(CFLAGS) -I. -DKYBER_K=4 -c $< -o $@
+$(OBJDIR)/512/polyvec.o $(OBJDIR)/768/polyvec.o $(OBJDIR)/1024/polyvec.o: polyvec.c
+	@case "$@" in */512/*) k=2;; */768/*) k=3;; *) k=4;; esac; \
+	mkdir -p `dirname "$@"`; \
+	$(CC) $(CPPFLAGS) $(CFLAGS) -I. -DKYBER_K=$$k -c polyvec.c -o "$@"
+
+$(OBJDIR)/512/poly.o $(OBJDIR)/768/poly.o $(OBJDIR)/1024/poly.o: poly.c
+	@case "$@" in */512/*) k=2;; */768/*) k=3;; *) k=4;; esac; \
+	mkdir -p `dirname "$@"`; \
+	$(CC) $(CPPFLAGS) $(CFLAGS) -I. -DKYBER_K=$$k -c poly.c -o "$@"
+
+$(OBJDIR)/512/ntt.o $(OBJDIR)/768/ntt.o $(OBJDIR)/1024/ntt.o: ntt.c
+	@case "$@" in */512/*) k=2;; */768/*) k=3;; *) k=4;; esac; \
+	mkdir -p `dirname "$@"`; \
+	$(CC) $(CPPFLAGS) $(CFLAGS) -I. -DKYBER_K=$$k -c ntt.c -o "$@"
+
+$(OBJDIR)/512/cbd.o $(OBJDIR)/768/cbd.o $(OBJDIR)/1024/cbd.o: cbd.c
+	@case "$@" in */512/*) k=2;; */768/*) k=3;; *) k=4;; esac; \
+	mkdir -p `dirname "$@"`; \
+	$(CC) $(CPPFLAGS) $(CFLAGS) -I. -DKYBER_K=$$k -c cbd.c -o "$@"
+
+$(OBJDIR)/512/reduce.o $(OBJDIR)/768/reduce.o $(OBJDIR)/1024/reduce.o: reduce.c
+	@case "$@" in */512/*) k=2;; */768/*) k=3;; *) k=4;; esac; \
+	mkdir -p `dirname "$@"`; \
+	$(CC) $(CPPFLAGS) $(CFLAGS) -I. -DKYBER_K=$$k -c reduce.c -o "$@"
+
+$(OBJDIR)/512/verify.o $(OBJDIR)/768/verify.o $(OBJDIR)/1024/verify.o: verify.c
+	@case "$@" in */512/*) k=2;; */768/*) k=3;; *) k=4;; esac; \
+	mkdir -p `dirname "$@"`; \
+	$(CC) $(CPPFLAGS) $(CFLAGS) -I. -DKYBER_K=$$k -c verify.c -o "$@"
+
+$(OBJDIR)/512/fips202.o $(OBJDIR)/768/fips202.o $(OBJDIR)/1024/fips202.o: fips202.c
+	@case "$@" in */512/*) k=2;; */768/*) k=3;; *) k=4;; esac; \
+	mkdir -p `dirname "$@"`; \
+	$(CC) $(CPPFLAGS) $(CFLAGS) -I. -DKYBER_K=$$k -c fips202.c -o "$@"
+
+$(OBJDIR)/512/symmetric-shake.o $(OBJDIR)/768/symmetric-shake.o $(OBJDIR)/1024/symmetric-shake.o: symmetric-shake.c
+	@case "$@" in */512/*) k=2;; */768/*) k=3;; *) k=4;; esac; \
+	mkdir -p `dirname "$@"`; \
+	$(CC) $(CPPFLAGS) $(CFLAGS) -I. -DKYBER_K=$$k -c symmetric-shake.c -o "$@"
 
 $(LIB512): $(OBJ512)
 	@mkdir -p $(LIBDIR)
@@ -177,17 +218,17 @@ $(VECTORDIR)/tvecs1024: $(BINDIR)/vectors1024
 	./$(BINDIR)/vectors1024 > $@
 
 $(VECTORDIR)/tvecs512.sha256.ok: $(VECTORDIR)/tvecs512 $(VECTORSRC)/SHA256SUMS $(SHA256CHECK)
-	@actual=`$(SHA256CHECK) $(VECTORDIR)/tvecs512`; expected=`while read hash name; do if test "$$name" = "tvecs512"; then echo "$$hash"; break; fi; done < $(VECTORSRC)/SHA256SUMS`; \
+	@actual=`$(SHA256CHECK) $(VECTORDIR)/tvecs512`; expected=`sed -n 's/[ ][ ]*tvecs512$$//p' $(VECTORSRC)/SHA256SUMS`; \
 	if test "$$actual" != "$$expected"; then echo "FAIL tvecs512 SHA-256: $$actual != $$expected" >&2; exit 1; fi; \
 	echo "PASS tvecs512 SHA-256 $$actual"; echo "$$actual" > $@
 
 $(VECTORDIR)/tvecs768.sha256.ok: $(VECTORDIR)/tvecs768 $(VECTORSRC)/SHA256SUMS $(SHA256CHECK)
-	@actual=`$(SHA256CHECK) $(VECTORDIR)/tvecs768`; expected=`while read hash name; do if test "$$name" = "tvecs768"; then echo "$$hash"; break; fi; done < $(VECTORSRC)/SHA256SUMS`; \
+	@actual=`$(SHA256CHECK) $(VECTORDIR)/tvecs768`; expected=`sed -n 's/[ ][ ]*tvecs768$$//p' $(VECTORSRC)/SHA256SUMS`; \
 	if test "$$actual" != "$$expected"; then echo "FAIL tvecs768 SHA-256: $$actual != $$expected" >&2; exit 1; fi; \
 	echo "PASS tvecs768 SHA-256 $$actual"; echo "$$actual" > $@
 
 $(VECTORDIR)/tvecs1024.sha256.ok: $(VECTORDIR)/tvecs1024 $(VECTORSRC)/SHA256SUMS $(SHA256CHECK)
-	@actual=`$(SHA256CHECK) $(VECTORDIR)/tvecs1024`; expected=`while read hash name; do if test "$$name" = "tvecs1024"; then echo "$$hash"; break; fi; done < $(VECTORSRC)/SHA256SUMS`; \
+	@actual=`$(SHA256CHECK) $(VECTORDIR)/tvecs1024`; expected=`sed -n 's/[ ][ ]*tvecs1024$$//p' $(VECTORSRC)/SHA256SUMS`; \
 	if test "$$actual" != "$$expected"; then echo "FAIL tvecs1024 SHA-256: $$actual != $$expected" >&2; exit 1; fi; \
 	echo "PASS tvecs1024 SHA-256 $$actual"; echo "$$actual" > $@
 
@@ -209,11 +250,8 @@ $(SUMMARY): $(LIB512) $(LIB768) $(LIB1024) $(PAIRWISE_RESULTS) $(TIME_RESULTS) $
 		echo; \
 		echo "[Toolchain]"; \
 		echo "CC=$(CC)"; \
-		echo "compiler_path=`command -v $(CC) 2>/dev/null || echo unknown`"; \
-		compiler_version=`$(CC) --version 2>/dev/null | sed -n '1p'`; \
-		if test -z "$$compiler_version"; then compiler_version=`$(CC) -V 2>&1 | sed -n '1p'`; fi; \
-		if test -z "$$compiler_version"; then compiler_version=`$(CC) -qversion 2>&1 | sed -n '1p'`; fi; \
-		echo "compiler_version=$$compiler_version"; \
+		ccpath=`whence $(CC) 2>/dev/null`; if test -z "$$ccpath"; then ccpath=`which $(CC) 2>/dev/null`; fi; if test -z "$$ccpath"; then ccpath=unknown; fi; echo "compiler_path=$$ccpath"; \
+		compiler_version=`$(CC) --version 2>/dev/null | sed -n '1p'`; if test -z "$$compiler_version"; then compiler_version=`$(CC) -V 2>&1 | sed -n '1p'`; fi; if test -z "$$compiler_version"; then compiler_version=`$(CC) -qversion 2>&1 | sed -n '1p'`; fi; echo "compiler_version=$$compiler_version"; \
 		echo "CPPFLAGS=$(CPPFLAGS)"; \
 		echo "CFLAGS=$(CFLAGS)"; \
 		echo "LDFLAGS=$(LDFLAGS)"; \
