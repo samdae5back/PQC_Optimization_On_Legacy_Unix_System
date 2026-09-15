@@ -1,16 +1,11 @@
-CC ?= cc
-AR = ar
-RANLIB = ranlib
+# Toolchain and optimization policy:
+# Use the platform/make defaults unless explicitly overridden on the command line.
+# Examples:
+#   make
+#   make CC=gcc
+#   make CC=gcc CFLAGS=-O2
+#   make CC=cc CFLAGS=+O2
 
-CPPFLAGS =
-HPUX_BUNDLED_CC := $(shell $(CC) --version 2>&1 | sed -n '1p' | grep -c '^(Bundled) cc:')
-ifeq ($(HPUX_BUNDLED_CC),1)
-CFLAGS =
-else
-CFLAGS = -O2
-endif
-LDFLAGS =
-LDLIBS =
 KAT_LDLIBS =
 
 BUILD = build
