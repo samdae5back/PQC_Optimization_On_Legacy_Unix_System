@@ -1,3 +1,4 @@
+#include <limits.h>
 #include <stdlib.h>
 #include <string.h>
 #include "aes256.h"
@@ -17,8 +18,10 @@ int seedexpander_init(AES_XOF_struct *ctx,
                       unsigned char *diversifier,
                       unsigned long maxlen)
 {
-    if((unsigned long long)maxlen >= 0x100000000ULL)
+#if ULONG_MAX > 0xffffffffUL
+    if(maxlen > 0xffffffffUL)
         return RNG_BAD_MAXLEN;
+#endif
 
     ctx->length_remaining = maxlen;
     memcpy(ctx->key, seed, 32);
