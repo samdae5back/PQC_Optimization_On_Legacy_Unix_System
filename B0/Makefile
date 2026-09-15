@@ -1,11 +1,19 @@
 # Toolchain and optimization policy:
-# Use the platform/make defaults unless explicitly overridden on the command line.
+# Use the platform's conventional tool names and compiler defaults unless
+# explicitly overridden on the make command line.
 # Examples:
 #   make
 #   make CC=gcc
 #   make CC=gcc CFLAGS=-O2
 #   make CC=cc CFLAGS=+O2
 
+CC = cc
+AR = ar
+RANLIB = ranlib
+CPPFLAGS =
+CFLAGS =
+LDFLAGS =
+LDLIBS =
 KAT_LDLIBS =
 
 BUILD = build
