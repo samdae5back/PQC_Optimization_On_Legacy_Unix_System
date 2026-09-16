@@ -107,10 +107,10 @@ void randombytes_init(unsigned char *entropy_input,
     DRBG_ctx.reseed_counter = 1;
 }
 
-int randombytes(unsigned char *x, unsigned long long xlen)
+void randombytes(unsigned char *x, size_t xlen)
 {
     unsigned char block[16];
-    unsigned long long offset;
+    size_t offset;
     int j;
 
     offset = 0;
@@ -133,15 +133,13 @@ int randombytes(unsigned char *x, unsigned long long xlen)
             xlen -= 16;
         }
         else {
-            memcpy(x + offset, block, (size_t)xlen);
+            memcpy(x + offset, block, xlen);
             xlen = 0;
         }
     }
 
     AES256_CTR_DRBG_Update(NULL, DRBG_ctx.Key, DRBG_ctx.V);
     DRBG_ctx.reseed_counter++;
-
-    return RNG_SUCCESS;
 }
 
 void AES256_CTR_DRBG_Update(unsigned char *provided_data,
