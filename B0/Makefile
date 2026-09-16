@@ -9,7 +9,6 @@
 
 CC = cc
 AR = ar
-RANLIB = ranlib
 CPPFLAGS =
 CFLAGS =
 LDFLAGS =
@@ -110,17 +109,14 @@ $(OBJDIR)/512/symmetric-shake.o $(OBJDIR)/768/symmetric-shake.o $(OBJDIR)/1024/s
 $(LIB512): $(OBJ512)
 	@mkdir -p $(LIBDIR)
 	$(AR) rcs $@ $(OBJ512)
-	-$(RANLIB) $@
 
 $(LIB768): $(OBJ768)
 	@mkdir -p $(LIBDIR)
 	$(AR) rcs $@ $(OBJ768)
-	-$(RANLIB) $@
 
 $(LIB1024): $(OBJ1024)
 	@mkdir -p $(LIBDIR)
 	$(AR) rcs $@ $(OBJ1024)
-	-$(RANLIB) $@
 
 $(BINDIR)/pairwise512: tests/pairwise.c randombytes.c $(LIB512)
 	@mkdir -p $(BINDIR)
@@ -266,7 +262,6 @@ $(SUMMARY): $(LIB512) $(LIB768) $(LIB1024) $(PAIRWISE_RESULTS) $(TIME_RESULTS) $
 		echo "LDLIBS=$(LDLIBS)"; \
 		echo "KAT_LDLIBS=$(KAT_LDLIBS)"; \
 		echo "AR=$(AR)"; \
-		echo "RANLIB=$(RANLIB)"; \
 		echo "kat_aes=internal portable AES-256"; \
 		echo "sha256_checker=internal portable C"; \
 		echo; \
