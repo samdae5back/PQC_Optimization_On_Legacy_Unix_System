@@ -138,9 +138,22 @@ void invntt(int16_t r[256]) {
 **************************************************/
 void basemul(int16_t r[2], const int16_t a[2], const int16_t b[2], int16_t zeta)
 {
-  r[0]  = fqmul(a[1], b[1]);
-  r[0]  = fqmul(r[0], zeta);
-  r[0] += fqmul(a[0], b[0]);
-  r[1]  = fqmul(a[0], b[1]);
-  r[1] += fqmul(a[1], b[0]);
+  int16_t t;
+  int32_t acc0, acc1;
+
+  /* R: combine same-scale products before Montgomery reduction.
+   * Contract: |a[i]|, |b[i]| <= 4095 and |zeta| <= 1664.
+   * This covers the existing KEM call paths, including 12-bit unpacking.
+   * |t| <= 1921; |acc0| <= 19965569; |acc1| <= 33538050.
+   * Both accumulators are inside +/-q*2^15 and fit signed 32 bits.
+   * The first reduction cannot be delayed: it aligns the a1*b1 term's
+   * Montgomery scale before the public-zeta multiplication.
+   * Outputs are congruent to B0, not necessarily identical representatives.
+   * Keep the caller's existing poly_reduce normalization unchanged.
+   */
+  t = fqmul(a[1], b[1]);
+  acc0 = (int32_t)a[0] * b[0] + (int32_t)t * zeta;
+  acc1 = (int32_t)a[0] * b[1] + (int32_t)a[1] * b[0];
+  r[0] = montgomery_reduce(acc0);
+  r[1] = montgomery_reduce(acc1);
 }
