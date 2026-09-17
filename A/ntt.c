@@ -55,6 +55,30 @@ const int16_t zetas[128] = {
    -108,  -308,   996,   991,   958, -1460,  1522,  1628
 };
 
+/* A: signed low 16 bits of zetas[i] * QINV, computed offline.
+ * Indices depend only on the public NTT schedule, never on coefficients.
+ * This adds 256 bytes of read-only precomputation; reduction timing is
+ * unchanged. See README.md for the identity, bounds, and test commands.
+ */
+static const int16_t zetas_qinv[128] = {
+     -20,  31498,  14745,    787,  13525, -12402,  28191, -16694,
+  -20907,  27758,  -3799, -15690,  10690,   1358, -11202,  31164,
+   -5827,  17363, -26360, -29057,   5571,  -1102,  21438, -26242,
+  -28073,  24313, -10532,   8800,  18426,   8859,  26675, -16163,
+   -5689,  -6516,   1496,  30967, -23565,  20179,  20710,  25080,
+  -12796,  26616,  16064, -12442,   9134,   -650, -25986,  27837,
+   19883, -28250, -15887,  -8898, -28309,   9075, -30199,  18249,
+   13426,  14017, -29156, -12757,  16832,   4311, -24155, -17915,
+    -335,  11182, -11477,  13387, -32227, -14233,  20494, -21655,
+  -27738,  13131,    945,  -4587, -14883,  23092,   6182,   5493,
+   32010, -32502,  10631,  30317,  29175, -18741, -28762,  12639,
+  -18486,  20100,  17560,  18525, -14430,  19529,  -5276, -12619,
+  -31183,  20297,  25435,   2146,  -7382,  15355,  24391, -32384,
+  -20927,  -6280,  10946, -14903,  24214, -11044,  16989,  14469,
+   10335, -21498,  -7934, -20198, -22502,  23210,  10906, -17442,
+   31636, -23860,  28644, -20257,  23998,   7756, -17422,  23132
+};
+
 /*************************************************
 * Name:        fqmul
 *
@@ -69,6 +93,20 @@ static int16_t fqmul(int16_t a, int16_t b) {
   return montgomery_reduce((int32_t)a*b);
 }
 
+/* A: fixed-public-factor Montgomery multiplication. b_qinv is the
+ * signed low 16 bits of b * QINV. Associativity modulo 2^16 makes t
+ * identical to B0, but its multiplication is independent of a * b.
+ * For the twiddles and b=1441, all intermediates fit int32_t for every
+ * int16_t a. The narrowing and signed shift have B0's target assumptions.
+ */
+static int16_t fqmul_const(int16_t a, int16_t b, int16_t b_qinv)
+{
+  int16_t t;
+
+  t = (int16_t)((int32_t)a * b_qinv);
+  return (int16_t)(((int32_t)a * b - (int32_t)t * KYBER_Q) >> 16);
+}
+
 /*************************************************
 * Name:        ntt
 *
@@ -79,14 +117,15 @@ static int16_t fqmul(int16_t a, int16_t b) {
 **************************************************/
 void ntt(int16_t r[256]) {
   unsigned int len, start, j, k;
-  int16_t t, zeta;
+  int16_t t, zeta, zeta_qinv;
 
   k = 1;
   for(len = 128; len >= 2; len >>= 1) {
     for(start = 0; start < 256; start = j + len) {
-      zeta = zetas[k++];
+      zeta = zetas[k];
+      zeta_qinv = zetas_qinv[k++];
       for(j = start; j < start + len; j++) {
-        t = fqmul(zeta, r[j + len]);
+        t = fqmul_const(r[j + len], zeta, zeta_qinv);
         r[j + len] = r[j] - t;
         r[j] = r[j] + t;
       }
@@ -105,24 +144,25 @@ void ntt(int16_t r[256]) {
 **************************************************/
 void invntt(int16_t r[256]) {
   unsigned int start, len, j, k;
-  int16_t t, zeta;
+  int16_t t, zeta, zeta_qinv;
   const int16_t f = 1441; /* mont^2/128 */
 
   k = 127;
   for(len = 2; len <= 128; len <<= 1) {
     for(start = 0; start < 256; start = j + len) {
-      zeta = zetas[k--];
+      zeta = zetas[k];
+      zeta_qinv = zetas_qinv[k--];
       for(j = start; j < start + len; j++) {
         t = r[j];
         r[j] = barrett_reduce(t + r[j + len]);
         r[j + len] = r[j + len] - t;
-        r[j + len] = fqmul(zeta, r[j + len]);
+        r[j + len] = fqmul_const(r[j + len], zeta, zeta_qinv);
       }
     }
   }
 
   for(j = 0; j < 256; j++)
-    r[j] = fqmul(r[j], f);
+    r[j] = fqmul_const(r[j], f, -10079); /* low16(1441 * QINV) */
 }
 
 /*************************************************
